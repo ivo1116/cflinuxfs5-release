@@ -68,11 +68,21 @@ runs:
         ref: main
         path: ops-file
 
+    - name: Cache CLI tools
+      id: cache-cli-tools
+      uses: actions/cache@v4
+      with:
+        path: |
+          /usr/local/bin/bbl
+          /usr/local/bin/bosh
+        key: cli-tools-bbl-9.0.36-bosh-7.4.0
+
     - name: Setup tools (bosh, bbl)
+      if: steps.cache-cli-tools.outputs.cache-hit != 'true'
       shell: bash
       run: |
         set -euo pipefail
-        
+
         wget -O /tmp/bbl https://github.com/cloudfoundry/bosh-bootloader/releases/download/v9.0.36/bbl-v9.0.36_linux_amd64
         chmod +x /tmp/bbl
         sudo mv /tmp/bbl /usr/local/bin/bbl

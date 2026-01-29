@@ -54,23 +54,36 @@ runs:
         ssh-key: ${{ inputs.bbl_state_deploy_key }}
         path: bbl-state
 
+    - name: Cache CLI tools
+      id: cache-cli-tools
+      uses: actions/cache@v4
+      with:
+        path: |
+          /usr/local/bin/bbl
+          /usr/local/bin/credhub
+        key: cli-tools-bbl-9.0.36-credhub-2.9.19
+
     - name: Setup tools (bbl, cf, credhub)
       shell: bash
       run: |
         set -euo pipefail
 
-        wget -O /tmp/bbl https://github.com/cloudfoundry/bosh-bootloader/releases/download/v9.0.36/bbl-v9.0.36_linux_amd64
-        chmod +x /tmp/bbl && sudo mv /tmp/bbl /usr/local/bin/bbl
+        if [[ ! -f /usr/local/bin/bbl ]]; then
+          wget -O /tmp/bbl https://github.com/cloudfoundry/bosh-bootloader/releases/download/v9.0.36/bbl-v9.0.36_linux_amd64
+          chmod +x /tmp/bbl && sudo mv /tmp/bbl /usr/local/bin/bbl
+        fi
 
         wget -q -O - https://packages.cloudfoundry.org/debian/cli.cloudfoundry.org.key | sudo apt-key add -
         echo "deb https://packages.cloudfoundry.org/debian stable main" | sudo tee /etc/apt/sources.list.d/cloudfoundry-cli.list
         sudo apt-get update
         sudo apt-get install cf8-cli -y
 
-        wget -O /tmp/credhub.tgz https://github.com/cloudfoundry/credhub-cli/releases/download/2.9.19/credhub-linux-2.9.19.tgz
-        mkdir -p /tmp/credhub-cli
-        tar -xzf /tmp/credhub.tgz -C /tmp/credhub-cli
-        sudo mv /tmp/credhub-cli/credhub /usr/local/bin/credhub
+        if [[ ! -f /usr/local/bin/credhub ]]; then
+          wget -O /tmp/credhub.tgz https://github.com/cloudfoundry/credhub-cli/releases/download/2.9.19/credhub-linux-2.9.19.tgz
+          mkdir -p /tmp/credhub-cli
+          tar -xzf /tmp/credhub.tgz -C /tmp/credhub-cli
+          sudo mv /tmp/credhub-cli/credhub /usr/local/bin/credhub
+        fi
 
     - name: Extract CF admin password from CredHub
       id: creds

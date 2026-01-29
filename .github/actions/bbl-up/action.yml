@@ -54,11 +54,22 @@ runs:
         path: bbl-state
         ssh-key: ${{ inputs.bbl_state_deploy_key }}
 
+    - name: Cache CLI tools
+      id: cache-cli-tools
+      uses: actions/cache@v4
+      with:
+        path: |
+          /usr/local/bin/bbl
+          /usr/local/bin/terraform
+          /usr/local/bin/bosh
+        key: cli-tools-bbl-test-terraform-1.5.7-bosh-7.4.0
+
     - name: Install BBL, Terraform, BOSH CLI
+      if: steps.cache-cli-tools.outputs.cache-hit != 'true'
       shell: bash
       run: |
         set -euo pipefail
-        
+
         wget -O /tmp/bbl https://github.com/Ivo1116/bosh-bootloader/releases/download/test/bbl-linux
         chmod +x /tmp/bbl
         sudo mv /tmp/bbl /usr/local/bin/bbl
@@ -118,7 +129,7 @@ runs:
         cd bbl-state
         git config user.name "CF Buildpacks Eng Bot"
         git config user.email "tanzu-buildpacks.pdl@broadcom.com"
-        
+
         echo "*/gcp-key.json" >> .gitignore
         echo "*/service-account-key.json" >> .gitignore
         echo "*/*-key.json" >> .gitignore
@@ -126,7 +137,7 @@ runs:
         echo "*/*.pem" >> .gitignore
         echo "*/private_key" >> .gitignore
         echo "*/id_rsa*" >> .gitignore
-        
+
         if [[ -n "$(git status --porcelain)" ]]; then
           git add -A
           git commit -m "Update BBL state for ${{ inputs.env_name }}"
@@ -134,3 +145,13 @@ runs:
         else
           echo "No BBL state changes to commit."
         fi
+
+    - name: Cleanup sensitive files
+      if: always()
+      shell: bash
+      run: |
+        set -euo pipefail
+        rm -f bbl-state/${{ inputs.env_name }}/gcp-key.json
+        rm -f bbl-state/${{ inputs.env_name }}/lb-cert.pem
+        rm -f bbl-state/${{ inputs.env_name }}/lb-key.pem
+        echo "Sensitive credential files cleaned up"
